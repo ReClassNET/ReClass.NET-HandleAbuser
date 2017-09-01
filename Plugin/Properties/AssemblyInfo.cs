@@ -5,8 +5,8 @@ using System.Runtime.InteropServices;
 // Allgemeine Informationen über eine Assembly werden über die folgenden 
 // Attribute gesteuert. Ändern Sie diese Attributwerte, um die Informationen zu ändern,
 // die einer Assembly zugeordnet sind.
-[assembly: AssemblyTitle("Memory Pipe")]
-[assembly: AssemblyDescription("A plugin which transfers memory from a target process through a pipe. This can be used if the target process doesn't allow remote access but can be attacked by dll injection.")]
+[assembly: AssemblyTitle("Handle Abuser")]
+[assembly: AssemblyDescription("A ReClass.NET plugin which uses the process handles of an other process to access the data of the target.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("KN4CK3R")]
 [assembly: AssemblyProduct("ReClass.NET Plugin")]
