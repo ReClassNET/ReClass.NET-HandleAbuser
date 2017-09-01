@@ -8,11 +8,6 @@ namespace fs = std::experimental::filesystem;
 std::wstring CreatePipeName()
 {
 	fs::path name(L"ReClass.NET_HandleAbuser");
-#ifdef _WIN64
-	name.append(L"x64");
-#else
-	name.append(L"x86");
-#endif
 
 	wchar_t szFileName[MAX_PATH];
 	GetModuleFileNameW(nullptr, szFileName, MAX_PATH);
@@ -31,6 +26,8 @@ MessageClient CreatePipeServer(NamedPipeServerStream& pipe)
 	client.RegisterMessage<ReadMemoryRequest>();
 	client.RegisterMessage<WriteMemoryRequest>();
 	client.RegisterMessage<EnumerateRemoteSectionsAndModulesRequest>();
+	client.RegisterMessage<EnumerateProcessHandlesRequest>();
+	client.RegisterMessage<ClosePipeRequest>();
 
 	return client;
 }

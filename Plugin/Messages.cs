@@ -18,7 +18,8 @@ namespace HandleAbuserPlugin
 		EnumerateRemoteSectionResponse = 9,
 		EnumerateRemoteModuleResponse = 10,
 		EnumerateProcessHandlesRequest = 11,
-		EnumerateProcessHandlesResponse = 12
+		EnumerateProcessHandlesResponse = 12,
+		ClosePipeRequest = 13
 	}
 
 	internal interface IMessage
@@ -430,6 +431,21 @@ namespace HandleAbuserPlugin
 		{
 			writer.Write(RemoteId);
 			writer.Write(Path);
+		}
+	}
+
+	internal class ClosePipeRequest : IMessage
+	{
+		public MessageType MessageType => MessageType.ClosePipeRequest;
+
+		public void ReadFrom(BinaryReader reader)
+		{
+
+		}
+
+		public void WriteTo(BinaryWriter writer)
+		{
+
 		}
 	}
 }

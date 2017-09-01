@@ -22,7 +22,8 @@ enum class MessageType
 	EnumerateRemoteSectionResponse = 9,
 	EnumerateRemoteModuleResponse = 10,
 	EnumerateProcessHandlesRequest = 11,
-	EnumerateProcessHandlesResponse = 12
+	EnumerateProcessHandlesResponse = 12,
+	ClosePipeRequest = 13
 };
 //---------------------------------------------------------------------------
 class IMessage
@@ -60,11 +61,13 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
+		remoteId = reader.ReadIntPtr();
 		success = reader.ReadBoolean();
 	}
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
+		writer.Write(remoteId);
 		writer.Write(success);
 	}
 
@@ -90,12 +93,12 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
-
+		remoteId = reader.ReadIntPtr();
 	}
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
-
+		writer.Write(remoteId);
 	}
 
 	bool Handle(MessageClient& client) override;
@@ -121,12 +124,12 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
-
+		remoteId = reader.ReadIntPtr();
 	}
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
-
+		writer.Write(remoteId);
 	}
 
 	bool Handle(MessageClient& client) override;
@@ -152,12 +155,12 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
-
+		remoteId = reader.ReadIntPtr();
 	}
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
-
+		writer.Write(remoteId);
 	}
 
 	bool Handle(MessageClient& client) override;
@@ -187,12 +190,14 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
+		remoteId = reader.ReadIntPtr();
 		address = reader.ReadIntPtr();
 		size = reader.ReadInt32();
 	}
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
+		writer.Write(remoteId);
 		writer.Write(address);
 		writer.Write(size);
 	}
@@ -224,12 +229,14 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
+		remoteId = reader.ReadIntPtr();
 		const auto size = reader.ReadInt32();
 		data = reader.ReadBytes(size);
 	}
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
+		writer.Write(remoteId);
 		writer.Write(static_cast<int>(data.size()));
 		writer.Write(data.data(), 0, static_cast<int>(data.size()));
 	}
@@ -260,6 +267,7 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
+		remoteId = reader.ReadIntPtr();
 		address = reader.ReadIntPtr();
 		const auto size = reader.ReadInt32();
 		data = reader.ReadBytes(size);
@@ -267,6 +275,7 @@ public:
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
+		writer.Write(remoteId);
 		writer.Write(address);
 		writer.Write(static_cast<int>(data.size()));
 		writer.Write(data.data(), 0, static_cast<int>(data.size()));
@@ -297,12 +306,12 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
-
+		remoteId = reader.ReadIntPtr();
 	}
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
-
+		writer.Write(remoteId);
 	}
 
 	bool Handle(MessageClient& client) override;
@@ -342,6 +351,7 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
+		remoteId = reader.ReadIntPtr();
 		baseAddress = reader.ReadIntPtr();
 		size = reader.ReadIntPtr();
 		type = static_cast<SectionType>(reader.ReadInt32());
@@ -353,6 +363,7 @@ public:
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
+		writer.Write(remoteId);
 		writer.Write(baseAddress);
 		writer.Write(size);
 		writer.Write(static_cast<int>(type));
@@ -396,6 +407,7 @@ public:
 
 	void ReadFrom(BinaryReader& reader) override
 	{
+		remoteId = reader.ReadIntPtr();
 		baseAddress = reader.ReadIntPtr();
 		size = reader.ReadIntPtr();
 		modulePath = reader.ReadString();
@@ -403,6 +415,7 @@ public:
 
 	void WriteTo(BinaryWriter& writer) const override
 	{
+		writer.Write(remoteId);
 		writer.Write(baseAddress);
 		writer.Write(size);
 		writer.Write(modulePath);
@@ -436,7 +449,7 @@ public:
 class EnumerateProcessHandlesResponse : public IMessage
 {
 public:
-	MessageType GetMessageType() const override { return MessageType::EnumerateProcessHandlesRequest; }
+	MessageType GetMessageType() const override { return MessageType::EnumerateProcessHandlesResponse; }
 
 	RC_Pointer GetRemoteId() const { return remoteId; }
 	const std::wstring& GetPath() const { return path; }
@@ -467,3 +480,22 @@ private:
 	std::wstring path;
 };
 //---------------------------------------------------------------------------
+class ClosePipeRequest : public IMessage
+{
+public:
+	MessageType GetMessageType() const override { return MessageType::ClosePipeRequest; }
+
+	void ReadFrom(BinaryReader& reader) override
+	{
+
+	}
+
+	void WriteTo(BinaryWriter& writer) const override
+	{
+
+	}
+
+	bool Handle(MessageClient& client) override { return false; }
+};
+//---------------------------------------------------------------------------
+// 

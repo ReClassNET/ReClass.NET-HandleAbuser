@@ -79,13 +79,13 @@ bool EnumerateProcessHandlesRequest::Handle(MessageClient& client)
 
 	for (auto handle : handles)
 	{
-		std::wstring path;
-		path.resize(300);
+		WCHAR path[PATH_MAXIMUM_LENGTH];
+		GetModuleFileNameExW(handle, nullptr, path, PATH_MAXIMUM_LENGTH);
 
-		GetModuleFileNameExW(handle, nullptr, const_cast<LPWSTR>(path.data()), 300);
-
-		client.Send(EnumerateProcessHandlesResponse(handle, std::move(path)));
+		client.Send(EnumerateProcessHandlesResponse(handle, path));
 	}
+
+	client.Send(StatusResponse(nullptr, true));
 
 	return true;
 }
