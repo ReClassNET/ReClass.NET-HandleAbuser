@@ -22,7 +22,8 @@ bool CloseProcessRequest::Handle(MessageClient& client)
 //---------------------------------------------------------------------------
 bool IsValidRequest::Handle(MessageClient& client)
 {
-	const auto success = WaitForSingleObject(GetRemoteId(), 0) == WAIT_TIMEOUT;
+	DWORD exitCode = 0;
+	const auto success = GetExitCodeProcess(GetRemoteId(), &exitCode) != FALSE && exitCode == STILL_ACTIVE;
 
 	client.Send(StatusResponse(GetRemoteId(), success));
 
