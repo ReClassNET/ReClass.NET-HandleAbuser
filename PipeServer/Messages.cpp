@@ -76,14 +76,60 @@ bool EnumerateRemoteSectionsAndModulesRequest::Handle(MessageClient& client)
 //---------------------------------------------------------------------------
 bool EnumerateProcessHandlesRequest::Handle(MessageClient& client)
 {
+	enum class Platform
+	{
+		Unknown,
+		X86,
+		X64
+	};
+
+	const auto GetProcessPlatform = [](HANDLE process) -> Platform
+	{
+		static USHORT processorArchitecture = PROCESSOR_ARCHITECTURE_UNKNOWN;
+		if (processorArchitecture == PROCESSOR_ARCHITECTURE_UNKNOWN)
+		{
+			SYSTEM_INFO info = {};
+			GetNativeSystemInfo(&info);
+
+			processorArchitecture = info.wProcessorArchitecture;
+		}
+
+		switch (processorArchitecture)
+		{
+		case PROCESSOR_ARCHITECTURE_INTEL:
+			return Platform::X86;
+		case PROCESSOR_ARCHITECTURE_AMD64:
+			BOOL isWow64 = FALSE;
+			if (IsWow64Process(process, &isWow64))
+			{
+				return isWow64 ? Platform::X86 : Platform::X64;
+			}
+
+#ifdef RECLASSNET64
+			return Platform::X64;
+#else
+			return Platform::X86;
+#endif
+		}
+		return Platform::Unknown;
+	};
+
 	auto handles = GetAvailableHandles(PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE);
 
 	for (auto handle : handles)
 	{
-		WCHAR path[PATH_MAXIMUM_LENGTH];
-		GetModuleFileNameExW(handle, nullptr, path, PATH_MAXIMUM_LENGTH);
+		auto platform = GetProcessPlatform(handle);
+#ifdef RECLASSNET64
+		if (platform == Platform::X64)
+#else
+		if (platform == Platform::X86)
+#endif
+		{
+			WCHAR path[PATH_MAXIMUM_LENGTH];
+			GetModuleFileNameExW(handle, nullptr, path, PATH_MAXIMUM_LENGTH);
 
-		client.Send(EnumerateProcessHandlesResponse(handle, path));
+			client.Send(EnumerateProcessHandlesResponse(handle, path));
+		}
 	}
 
 	client.Send(StatusResponse(nullptr, true));
