@@ -1,0 +1,3 @@
+[submodule "PipeServer/PipeStream"]
+	path = PipeServer/PipeStream
+	url = https://github.com/KN4CK3R/PipeStream.git
