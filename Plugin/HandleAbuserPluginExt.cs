@@ -36,7 +36,7 @@ namespace HandleAbuserPlugin
 
 			this.host = host ?? throw new ArgumentNullException(nameof(host));
 
-			host.Process.CoreFunctions.RegisterFunctions("Memory Pipe", this);
+			host.Process.CoreFunctions.RegisterFunctions("Handle Abuser", this);
 
 			return true;
 		}
@@ -99,6 +99,9 @@ namespace HandleAbuserPlugin
 				client.RegisterMessage<ReadMemoryResponse>();
 				client.RegisterMessage<EnumerateRemoteSectionResponse>();
 				client.RegisterMessage<EnumerateRemoteModuleResponse>();
+				client.RegisterMessage<EnumerateProcessHandlesResponse>();
+
+				clients.Add(pipePath, client);
 			}
 			return client;
 		}

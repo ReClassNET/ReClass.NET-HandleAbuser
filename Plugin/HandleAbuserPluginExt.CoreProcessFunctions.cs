@@ -82,6 +82,7 @@ namespace HandleAbuserPlugin
 		/// <param name="process">The process to read from.</param>
 		/// <param name="address">The address to read from.</param>
 		/// <param name="buffer">The buffer to read into.</param>
+		/// <param name="offset">The offset into the buffer.</param>
 		/// <param name="size">The size of the memory to read.</param>
 		/// <returns>True if it succeeds, false if it fails.</returns>
 		public bool ReadRemoteMemory(IntPtr process, IntPtr address, ref byte[] buffer, int offset, int size)
@@ -176,36 +177,44 @@ namespace HandleAbuserPlugin
 				{
 					var client = GetOrCreateClientForPipe(pipePath);
 
-					client.Send(new EnumerateProcessHandlesRequest());
+					validClients.Add(client);
 
-					var abusedProcessName = Path.GetFileName(pipePath);
-
-					while (true)
+					try
 					{
-						var message = client.Receive();
-						if (message is StatusResponse)
+						client.Send(new EnumerateProcessHandlesRequest());
+
+						var abusedProcessName = Path.GetFileName(pipePath);
+
+						while (true)
 						{
-							break;
-						}
-
-						if (message is EnumerateProcessHandlesResponse phr)
-						{
-							var mapping = new ProcessClientMapping(phr.RemoteId, client);
-							processToClientMapping.Add(mapping.GetHashCode(), mapping);
-
-							var targetProcessName = Path.GetFileName(phr.Path);
-
-							var data = new EnumerateProcessData
+							var message = client.Receive();
+							if (message is StatusResponse)
 							{
-								Id = (IntPtr)mapping.GetHashCode(),
-								Path = $"{targetProcessName} @ {abusedProcessName}"
-							};
+								break;
+							}
 
-							callbackProcess(ref data);
+							if (message is EnumerateProcessHandlesResponse phr)
+							{
+								var mapping = new ProcessClientMapping(phr.RemoteId, client);
+								processToClientMapping.Add(mapping.GetHashCode(), mapping);
+
+								var targetProcessName = Path.GetFileName(phr.Path);
+
+								var data = new EnumerateProcessData
+								{
+									Id = (IntPtr)mapping.GetHashCode(),
+									Name = $"{abusedProcessName} -> {targetProcessName}",
+									Path = phr.Path
+								};
+
+								callbackProcess(ref data);
+							}
 						}
 					}
-
-					validClients.Add(client);
+					catch (Exception ex)
+					{
+						host.Logger.Log(ex);
+					}
 				}
 
 				foreach (var dormant in clients.Values.Except(validClients))
