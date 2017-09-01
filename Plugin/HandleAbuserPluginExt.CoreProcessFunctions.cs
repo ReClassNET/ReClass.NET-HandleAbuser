@@ -177,8 +177,6 @@ namespace HandleAbuserPlugin
 				{
 					var client = GetOrCreateClientForPipe(pipePath);
 
-					validClients.Add(client);
-
 					try
 					{
 						client.Send(new EnumerateProcessHandlesRequest());
@@ -210,6 +208,8 @@ namespace HandleAbuserPlugin
 								callbackProcess(ref data);
 							}
 						}
+
+						validClients.Add(client);
 					}
 					catch (Exception ex)
 					{
@@ -253,7 +253,7 @@ namespace HandleAbuserPlugin
 				{
 					try
 					{
-						mapping.Client.Send(new EnumerateRemoteSectionsAndModulesRequest());
+						mapping.Client.Send(new EnumerateRemoteSectionsAndModulesRequest(mapping.RemoteId));
 
 						while (true)
 						{
