@@ -41,7 +41,7 @@ private:
 	std::vector<uint8_t> data;
 };
 //---------------------------------------------------------------------------
-std::vector<RC_Pointer> GetAvailableHandles()
+std::vector<RC_Pointer> GetAvailableHandles(DWORD desiredAccess)
 {
 	using NTSTATUS = LONG;
 
@@ -88,8 +88,13 @@ std::vector<RC_Pointer> GetAvailableHandles()
 		ObjectTypeInformation = 2
 	};
 
-	NTSTATUS(__stdcall *NtQuerySystemInformation)(SYSTEM_INFORMATION_CLASS SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength) = (decltype(NtQuerySystemInformation))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQuerySystemInformation");
-	NTSTATUS(__stdcall *NtQueryObject)(HANDLE Handle, OBJECT_INFORMATION_CLASS ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength) = (decltype(NtQueryObject))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryObject");
+	using NtQuerySystemInformation_t = NTSTATUS(__stdcall *)(SYSTEM_INFORMATION_CLASS SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
+	using NtQueryObject_t = NTSTATUS(__stdcall *)(HANDLE Handle, OBJECT_INFORMATION_CLASS ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength);
+
+	const auto moduleHandle = GetModuleHandleW(L"ntdll.dll");
+
+	const auto NtQuerySystemInformation = reinterpret_cast<NtQuerySystemInformation_t>(GetProcAddress(moduleHandle, "NtQuerySystemInformation"));
+	const auto NtQueryObject = reinterpret_cast<NtQueryObject_t>(GetProcAddress(moduleHandle, "NtQueryObject"));
 
 	std::vector<RC_Pointer> handles;
 
@@ -125,10 +130,8 @@ std::vector<RC_Pointer> GetAvailableHandles()
 			const auto status = NtQueryObject(reinterpret_cast<HANDLE>(handleEntry.Handle), OBJECT_INFORMATION_CLASS::ObjectTypeInformation, &objectTypeInfo, sizeof(objectTypeInfo), &dummy);
 			if (status == STATUS_SUCCESS)
 			{
-				if (wcscmp(objectTypeInfo.TypeName.Buffer, L"Process") == 0)
+				if (std::wcscmp(objectTypeInfo.TypeName.Buffer, L"Process") == 0)
 				{
-					const DWORD desiredAccess = PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE;
-
 					if ((handleEntry.GrantedAccess & desiredAccess) == desiredAccess)
 					{
 						handles.push_back(reinterpret_cast<RC_Pointer>(handleEntry.Handle));
@@ -204,7 +207,7 @@ void EnumerateRemoteSectionsAndModules(RC_Pointer remoteId, const std::function<
 		address = reinterpret_cast<size_t>(memInfo.BaseAddress) + memInfo.RegionSize;
 	}
 
-	auto handle = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(remoteId));
+	const auto handle = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(remoteId));
 	if (handle != INVALID_HANDLE_VALUE)
 	{
 		MODULEENTRY32W me32 = {};

@@ -3,7 +3,7 @@
 
 #include <psapi.h>
 
-extern std::vector<RC_Pointer> GetAvailableHandles();
+extern std::vector<RC_Pointer> GetAvailableHandles(DWORD desiredAccess);
 extern void EnumerateRemoteSectionsAndModules(RC_Pointer remoteId, const std::function<void(RC_Pointer, RC_Pointer, std::wstring&&)>&, const std::function<void(RC_Pointer, RC_Pointer, SectionType, SectionCategory, SectionProtection, std::wstring&&, std::wstring&&)>&);
 
 bool OpenProcessRequest::Handle(MessageClient& client)
@@ -75,7 +75,7 @@ bool EnumerateRemoteSectionsAndModulesRequest::Handle(MessageClient& client)
 //---------------------------------------------------------------------------
 bool EnumerateProcessHandlesRequest::Handle(MessageClient& client)
 {
-	auto handles = GetAvailableHandles();
+	auto handles = GetAvailableHandles(PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE);
 
 	for (auto handle : handles)
 	{
