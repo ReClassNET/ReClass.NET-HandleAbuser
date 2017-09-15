@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <functional>
-#include <tlhelp32.h>
+#include <psapi.h>
 
 #include "ReClassNET_Plugin.hpp"
 
@@ -207,64 +207,69 @@ void EnumerateRemoteSectionsAndModules(RC_Pointer remoteId, const std::function<
 		address = reinterpret_cast<size_t>(memInfo.BaseAddress) + memInfo.RegionSize;
 	}
 
-	const auto handle = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetProcessId(remoteId));
-	if (handle != INVALID_HANDLE_VALUE)
+	DWORD needed;
+	if (EnumProcessModules(remoteId, nullptr, 0, &needed))
 	{
-		MODULEENTRY32W me32 = {};
-		me32.dwSize = sizeof(MODULEENTRY32W);
-		if (Module32FirstW(handle, &me32))
+		std::vector<HMODULE> modules(needed / sizeof(HMODULE));
+		if (EnumProcessModules(remoteId, modules.data(), needed, &needed))
 		{
-			do
+			for (HMODULE curModule : modules)
 			{
-				moduleCallback(static_cast<RC_Pointer>(me32.modBaseAddr), reinterpret_cast<RC_Pointer>(me32.modBaseSize), me32.szExePath);
+				MODULEINFO moduleInfo = {};
+				wchar_t modulepath[MAX_PATH] = {};
 
-				auto it = std::lower_bound(std::begin(sections), std::end(sections), static_cast<LPVOID>(me32.modBaseAddr), [&sections](const auto& lhs, const LPVOID& rhs)
+				if (GetModuleInformation(remoteId, curModule, &moduleInfo, sizeof(moduleInfo)) &&
+					GetModuleFileNameExW(remoteId, curModule, modulepath, MAX_PATH))
 				{
-					return lhs.BaseAddress < rhs;
-				});
+					moduleCallback((RC_Pointer)moduleInfo.lpBaseOfDll, (RC_Pointer)moduleInfo.SizeOfImage, modulepath);
 
-				IMAGE_DOS_HEADER DosHdr = {};
-				IMAGE_NT_HEADERS NtHdr = {};
 
-				ReadProcessMemory(remoteId, me32.modBaseAddr, &DosHdr, sizeof(IMAGE_DOS_HEADER), nullptr);
-				ReadProcessMemory(remoteId, me32.modBaseAddr + DosHdr.e_lfanew, &NtHdr, sizeof(IMAGE_NT_HEADERS), nullptr);
-
-				std::vector<IMAGE_SECTION_HEADER> sectionHeaders(NtHdr.FileHeader.NumberOfSections);
-				ReadProcessMemory(remoteId, me32.modBaseAddr + DosHdr.e_lfanew + sizeof(IMAGE_NT_HEADERS), sectionHeaders.data(), NtHdr.FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER), nullptr);
-				for (auto i = 0; i < NtHdr.FileHeader.NumberOfSections; ++i)
-				{
-					auto&& sectionHeader = sectionHeaders[i];
-
-					const auto sectionAddress = reinterpret_cast<size_t>(me32.modBaseAddr) + sectionHeader.VirtualAddress;
-					for (auto j = it; j != std::end(sections); ++j)
+					auto it = std::lower_bound(std::begin(sections), std::end(sections), static_cast<LPVOID>(moduleInfo.lpBaseOfDll), [&sections](const auto& lhs, const LPVOID& rhs)
 					{
-						if (sectionAddress >= reinterpret_cast<size_t>(j->BaseAddress) && sectionAddress < reinterpret_cast<size_t>(j->BaseAddress) + static_cast<size_t>(j->Size))
+						return lhs.BaseAddress < rhs;
+					});
+
+					IMAGE_DOS_HEADER DosHdr = {};
+					IMAGE_NT_HEADERS NtHdr = {};
+
+					ReadProcessMemory(remoteId, ((BYTE*)moduleInfo.lpBaseOfDll), &DosHdr, sizeof(IMAGE_DOS_HEADER), NULL);
+					ReadProcessMemory(remoteId, ((BYTE*)moduleInfo.lpBaseOfDll) + DosHdr.e_lfanew, &NtHdr, sizeof(IMAGE_NT_HEADERS), NULL);
+
+					std::vector<IMAGE_SECTION_HEADER> sectionHeaders(NtHdr.FileHeader.NumberOfSections);
+					ReadProcessMemory(remoteId, ((BYTE*)moduleInfo.lpBaseOfDll) + DosHdr.e_lfanew + sizeof(IMAGE_NT_HEADERS), sectionHeaders.data(), NtHdr.FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER), NULL);
+
+					for (auto i = 0; i < NtHdr.FileHeader.NumberOfSections; ++i)
+					{
+						auto&& sectionHeader = sectionHeaders[i];
+
+						auto sectionAddress = reinterpret_cast<size_t>(moduleInfo.lpBaseOfDll) + sectionHeader.VirtualAddress;
+						for (auto j = it; j != std::end(sections); ++j)
 						{
-							// Copy the name because it is not null padded.
-							char buffer[IMAGE_SIZEOF_SHORT_NAME + 1] = { 0 };
-							std::memcpy(buffer, sectionHeader.Name, IMAGE_SIZEOF_SHORT_NAME);
-
-							if (std::strcmp(buffer, ".text") == 0 || std::strcmp(buffer, "code") == 0)
+							if (sectionAddress >= reinterpret_cast<size_t>(j->BaseAddress) && sectionAddress < reinterpret_cast<size_t>(j->BaseAddress) + static_cast<size_t>(j->Size))
 							{
-								j->Category = SectionCategory::CODE;
-							}
-							else if (std::strcmp(buffer, ".data") == 0 || std::strcmp(buffer, "data") == 0 || std::strcmp(buffer, ".rdata") == 0 || std::strcmp(buffer, ".idata") == 0)
-							{
-								j->Category = SectionCategory::DATA;
-							}
+								// Copy the name because it is not null padded.
+								char buffer[IMAGE_SIZEOF_SHORT_NAME + 1] = { 0 };
+								std::memcpy(buffer, sectionHeader.Name, IMAGE_SIZEOF_SHORT_NAME);
 
-							MultiByteToUnicode(buffer, j->Name, IMAGE_SIZEOF_SHORT_NAME);
-							std::memcpy(j->ModulePath, me32.szExePath, std::min(MAX_PATH, PATH_MAXIMUM_LENGTH));
+								if (std::strcmp(buffer, ".text") == 0 || std::strcmp(buffer, "code") == 0)
+								{
+									j->Category = SectionCategory::CODE;
+								}
+								else if (std::strcmp(buffer, ".data") == 0 || std::strcmp(buffer, "data") == 0 || std::strcmp(buffer, ".rdata") == 0 || std::strcmp(buffer, ".idata") == 0)
+								{
+									j->Category = SectionCategory::DATA;
+								}
 
-							break;
+								MultiByteToUnicode(buffer, j->Name, IMAGE_SIZEOF_SHORT_NAME);
+								std::memcpy(j->ModulePath, modulepath, std::min(MAX_PATH, PATH_MAXIMUM_LENGTH));
+
+								break;
+							}
 						}
 					}
-
 				}
-			} while (Module32NextW(handle, &me32));
+			}
 		}
-
-		CloseHandle(handle);
 
 		for (auto&& section : sections)
 		{
