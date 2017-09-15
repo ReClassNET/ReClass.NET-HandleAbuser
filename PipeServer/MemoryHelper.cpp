@@ -11,7 +11,7 @@ template<typename T>
 class FlexibleBuffer
 {
 public:
-	FlexibleBuffer(std::size_t initialSize)
+	FlexibleBuffer(size_t initialSize)
 		: data(initialSize)
 	{
 
@@ -213,32 +213,37 @@ void EnumerateRemoteSectionsAndModules(RC_Pointer remoteId, const std::function<
 		std::vector<HMODULE> modules(needed / sizeof(HMODULE));
 		if (EnumProcessModules(remoteId, modules.data(), needed, &needed))
 		{
-			for (HMODULE curModule : modules)
+			for (auto module : modules)
 			{
 				MODULEINFO moduleInfo = {};
 				wchar_t modulepath[MAX_PATH] = {};
 
-				if (GetModuleInformation(remoteId, curModule, &moduleInfo, sizeof(moduleInfo)) &&
-					GetModuleFileNameExW(remoteId, curModule, modulepath, MAX_PATH))
+				if (GetModuleInformation(remoteId, module, &moduleInfo, sizeof(moduleInfo)) &&
+					GetModuleFileNameExW(remoteId, module, modulepath, MAX_PATH))
 				{
-					moduleCallback((RC_Pointer)moduleInfo.lpBaseOfDll, (RC_Pointer)moduleInfo.SizeOfImage, modulepath);
+					moduleCallback(
+						static_cast<RC_Pointer>(moduleInfo.lpBaseOfDll),
+						reinterpret_cast<RC_Pointer>(moduleInfo.SizeOfImage),
+						modulepath
+					);
 
+					const auto it = std::lower_bound(
+						std::begin(sections),
+						std::end(sections),
+						static_cast<LPVOID>(moduleInfo.lpBaseOfDll),
+						[&sections](const auto& lhs, const LPVOID& rhs) { return lhs.BaseAddress < rhs; }
+					);
 
-					auto it = std::lower_bound(std::begin(sections), std::end(sections), static_cast<LPVOID>(moduleInfo.lpBaseOfDll), [&sections](const auto& lhs, const LPVOID& rhs)
-					{
-						return lhs.BaseAddress < rhs;
-					});
+					IMAGE_DOS_HEADER dosHdr = {};
+					IMAGE_NT_HEADERS ntHdr = {};
 
-					IMAGE_DOS_HEADER DosHdr = {};
-					IMAGE_NT_HEADERS NtHdr = {};
+					ReadProcessMemory(remoteId, static_cast<BYTE*>(moduleInfo.lpBaseOfDll), &dosHdr, sizeof(IMAGE_DOS_HEADER), nullptr);
+					ReadProcessMemory(remoteId, static_cast<BYTE*>(moduleInfo.lpBaseOfDll) + dosHdr.e_lfanew, &ntHdr, sizeof(IMAGE_NT_HEADERS), nullptr);
 
-					ReadProcessMemory(remoteId, ((BYTE*)moduleInfo.lpBaseOfDll), &DosHdr, sizeof(IMAGE_DOS_HEADER), NULL);
-					ReadProcessMemory(remoteId, ((BYTE*)moduleInfo.lpBaseOfDll) + DosHdr.e_lfanew, &NtHdr, sizeof(IMAGE_NT_HEADERS), NULL);
+					std::vector<IMAGE_SECTION_HEADER> sectionHeaders(ntHdr.FileHeader.NumberOfSections);
+					ReadProcessMemory(remoteId, static_cast<BYTE*>(moduleInfo.lpBaseOfDll) + dosHdr.e_lfanew + sizeof(IMAGE_NT_HEADERS), sectionHeaders.data(), ntHdr.FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER), nullptr);
 
-					std::vector<IMAGE_SECTION_HEADER> sectionHeaders(NtHdr.FileHeader.NumberOfSections);
-					ReadProcessMemory(remoteId, ((BYTE*)moduleInfo.lpBaseOfDll) + DosHdr.e_lfanew + sizeof(IMAGE_NT_HEADERS), sectionHeaders.data(), NtHdr.FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER), NULL);
-
-					for (auto i = 0; i < NtHdr.FileHeader.NumberOfSections; ++i)
+					for (auto i = 0; i < ntHdr.FileHeader.NumberOfSections; ++i)
 					{
 						auto&& sectionHeader = sectionHeaders[i];
 
@@ -273,7 +278,15 @@ void EnumerateRemoteSectionsAndModules(RC_Pointer remoteId, const std::function<
 
 		for (auto&& section : sections)
 		{
-			sectionCallback(section.BaseAddress, reinterpret_cast<RC_Pointer>(section.Size), section.Type, section.Category, section.Protection, reinterpret_cast<const WCHAR*>(section.Name), reinterpret_cast<const WCHAR*>(section.ModulePath));
+			sectionCallback(
+				section.BaseAddress,
+				reinterpret_cast<RC_Pointer>(section.Size),
+				section.Type,
+				section.Category,
+				section.Protection,
+				reinterpret_cast<const WCHAR*>(section.Name),
+				reinterpret_cast<const WCHAR*>(section.ModulePath)
+			);
 		}
 	}
 }
