@@ -81,12 +81,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ReClass.NET\ReClass.NET.csproj">
-      <Project>{BFB8917D-E9B4-463F-A6E8-612C35728C78}</Project>
-      <Name>ReClass.NET</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -95,6 +89,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\logo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ReClass.NET\ReClass.NET\ReClass.NET.csproj">
+      <Project>{bfb8917d-e9b4-463f-a6e8-612c35728c78}</Project>
+      <Name>ReClass.NET</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
