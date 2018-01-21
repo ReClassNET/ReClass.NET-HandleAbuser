@@ -3,6 +3,7 @@ namespace fs = std::experimental::filesystem;
 #include <process.h>
 
 #include "PipeStream/NamedPipeServerStream.hpp"
+#include "PipeStream/Exceptions.hpp"
 #include "MessageClient.hpp"
 
 std::wstring CreatePipeName()
