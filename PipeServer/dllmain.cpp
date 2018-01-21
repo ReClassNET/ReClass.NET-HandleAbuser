@@ -58,11 +58,11 @@ void PipeThread(void*)
 
 			pipe.Disconnect();
 		}
-		catch (InvalidOperationException*)
+		catch (InvalidOperationException&)
 		{
 
 		}
-		catch (IOException*)
+		catch (IOException&)
 		{
 
 		}
