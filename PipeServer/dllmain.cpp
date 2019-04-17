@@ -3,6 +3,7 @@ namespace fs = std::experimental::filesystem;
 #include <process.h>
 
 #include "PipeStream/NamedPipeServerStream.hpp"
+#include "PipeStream/Exceptions.hpp"
 #include "MessageClient.hpp"
 
 std::wstring CreatePipeName()
@@ -58,11 +59,11 @@ void PipeThread(void*)
 
 			pipe.Disconnect();
 		}
-		catch (InvalidOperationException*)
+		catch (InvalidOperationException&)
 		{
 
 		}
-		catch (IOException*)
+		catch (IOException&)
 		{
 
 		}
@@ -73,12 +74,31 @@ void PipeThread(void*)
 	}
 }
 //---------------------------------------------------------------------------
+LONG CALLBACK VectoredExceptionHandler(PEXCEPTION_POINTERS exceptionPointers)
+{
+	if (exceptionPointers->ExceptionRecord->ExceptionCode == EXCEPTION_INVALID_HANDLE)
+	{
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+
+	return EXCEPTION_CONTINUE_SEARCH;
+}
+//---------------------------------------------------------------------------
 BOOL WINAPI DllMain(HMODULE handle, DWORD reason, PVOID reversed)
 {
 	if (reason == DLL_PROCESS_ATTACH)
 	{
+		AddVectoredExceptionHandler(NULL, VectoredExceptionHandler);
+
 		_beginthread(PipeThread, 0, nullptr);
 
+		return TRUE;
+	}
+
+	if (reason == DLL_PROCESS_DETACH)
+	{
+		RemoveVectoredExceptionHandler(VectoredExceptionHandler);
+		
 		return TRUE;
 	}
 

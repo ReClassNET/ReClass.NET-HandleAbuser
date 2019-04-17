@@ -10,8 +10,8 @@ ReClass.NET <--------> Zombie <--------> Target
 - Download from https://github.com/KN4CK3R/ReClass.NET-HandleAbuser/releases
 - Copy the dll files in the appropriate Plugin folder (ReClass.NET/x86/Plugins or ReClass.NET/x64/Plugins)
 - Start ReClass.NET and check the plugins form if the HandleAbuser plugin is listed. Open the "Native" tab and switch all available methods to the HandleAbuser plugin.
-- Inject the PipeServer.dll into the target.
-- Attach to the process via its pipe and use ReClass.NET as normal.
+- Inject the PipeServer.dll into the zombie process.
+- Attach to the target process through the zombie process pipe and use ReClass.NET as normal.
 
 ## Compiling
 If you want to compile the ReClass.NET HandleAbuser Plugin just fork the repository and create the following folder structure. If you don't use this structure you need to fix the project references.
