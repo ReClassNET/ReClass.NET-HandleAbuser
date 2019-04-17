@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using ReClassNET.Core;
 using ReClassNET.Debugger;
-using ReClassNET.Util;
+using ReClassNET.Extensions;
 
 namespace HandleAbuserPlugin
 {
