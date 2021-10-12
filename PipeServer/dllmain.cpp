@@ -1,5 +1,5 @@
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
+#include <filesystem>
+namespace fs = std::filesystem;
 #include <process.h>
 
 #include "PipeStream/NamedPipeServerStream.hpp"
@@ -12,7 +12,7 @@ std::wstring CreatePipeName()
 
 	wchar_t szFileName[MAX_PATH];
 	GetModuleFileNameW(nullptr, szFileName, MAX_PATH);
-	name.append(fs::path(szFileName).filename());
+	name /= fs::path(szFileName);
 
 	return name.wstring();
 }
